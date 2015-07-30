@@ -12,7 +12,8 @@ import (
 	"math/rand"
 	"os"
 
-	//"os/exec"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -24,9 +25,9 @@ const (
 
 var (
 	newImage *image.RGBA
-	white color.Color = color.RGBA{255, 255, 255, 255}
-	black color.Color = color.RGBA{0, 0, 0, 255}
-	blue  color.Color = color.RGBA{0, 0, 255, 255}
+	white    color.Color = color.RGBA{255, 255, 255, 255}
+	black    color.Color = color.RGBA{0, 0, 0, 255}
+	blue     color.Color = color.RGBA{0, 0, 255, 255}
 
 	hmap       [][]int
 	height     = int(math.Pow(2, float64(power))) + 1 //513 257
@@ -81,7 +82,7 @@ func diamond(x, y, l int) {
 		d = hmap[x][by]
 	}
 
-	hmap[x][y] = (a+b+c+d)/4 + + calcRandom(l)
+	hmap[x][y] = (a+b+c+d)/4 + +calcRandom(l)
 }
 
 func diamondSquare(lx, ly, rx, ry int) {
@@ -158,7 +159,7 @@ func normaliseHMap() {
 	}()
 
 	delta := max - min
-	var percent float32 = baseHeight / float32(delta)
+	percent := float32(baseHeight) / float32(delta)
 
 	for i := range hmap {
 		for j := range hmap[i] {
@@ -167,14 +168,14 @@ func normaliseHMap() {
 	}
 }
 
-func saveImage() {
+func saveImage(name string) {
 	var waterLevel = (hmap[0][0]+hmap[0][width-1]+hmap[height-1][0]+hmap[height-1][width-1])/4 + 1
 
-	log.Println("Save image")
-	
+	log.Println("Save image: ", name)
+
 	newImage = image.NewRGBA(image.Rect(0, 0, height, width))
 	draw.Draw(newImage, newImage.Bounds(), &image.Uniform{white}, image.ZP, draw.Src)
-	
+
 	for i := range hmap {
 		for j := range hmap[i] {
 			//			newImage.Set(i, j, color.RGBA{uint8(hmap[i][j]), 0, 0, 255})
@@ -190,25 +191,34 @@ func saveImage() {
 			}
 		}
 	}
-	w, _ := os.Create("new.png")
+	w, _ := os.Create(name)
 	defer w.Close()
 	png.Encode(w, newImage) //Encode writes the Image m to w in PNG format.
 }
 
-func main() {
-	log.Println("Start generation")
-	rand.Seed(142)
-
-	makeHMap()
-	var generateSteps = 32
-	for i := 0; i < generateSteps; i += 1 {
-		log.Println("Generate progress - total:", generateSteps, " step: ", i)
-		generate()
+func generateNMaps(seed, n int) {
+	if n <= 0 {
+		log.Panicln("n should be great then 0")
 	}
-	smoothMap()
-	normaliseHMap()
-	//	showHMap()
+	log.Println("Start generation")
 
-	saveImage()
+	for j := 0; j < n; j++ {
+		rand.Seed(int64(seed + j))
 
+		makeHMap()
+		var generateSteps = 32
+		for i := 0; i < generateSteps; i++ {
+			log.Println("Generate progress - total:", generateSteps, " step: ", i)
+			generate()
+		}
+		smoothMap()
+		normaliseHMap()
+		//	showHMap()
+
+		saveImage(strings.Join([]string{"name", strconv.Itoa(j), ".png"}, ""))
+	}
+}
+
+func main() {
+	generateNMaps(42, 20)
 }
